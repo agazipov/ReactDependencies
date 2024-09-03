@@ -18,8 +18,8 @@ function getFiles(dir: string, files_: string[] = []): string[] {
 			getFiles(name, files_);
 		} else {
 			const ext = path.extname(name);
-			if (ext === '.js' || ext === '.jsx' || ext === '.ts' || ext === '.tsx') {
-				files_.push(name);
+			if (ext === '.js' || ext === '.jsx' || ext === '.ts' || ext === '.tsx') {			
+				files_.push(name);				
 			}
 		}
 	}
@@ -42,7 +42,71 @@ function analyzeProject(rootPath: string) {
 	//основной массив компонетов
 	const components: IComponent[] = [];
 	// вспомогательный список компонентов для удаления лишних потомков
+	const componentsListExport: string[] = [];
 	const componentsList: string[] = [];
+
+	const content = fs.readFileSync('d:\\clear_skill\\v0.2\\ride_project\\src\\pages\\app\\App.tsx', 'utf8');		
+	const ast = parser.parse(content, {
+		sourceType: 'module',
+		plugins: ['jsx', 'typescript']
+	});
+	console.log('ast', ast);
+	const identifiers: any = [];
+	const imports: any = [];
+	traverse(ast, {
+		ImportDeclaration(path) {
+			imports.push(path.node.specifiers.map(specifier => specifier.local.name));
+		},
+		JSXIdentifier(path) {
+			if (imports.flat().includes(path.node.name)) {
+				identifiers.push(path.node.name);
+			}
+		  }
+	});
+	console.log('imports', imports.flat());
+	console.log('identifiers', identifiers);
+	
+	files.forEach(file => {
+		const content = fs.readFileSync(file, 'utf8');		
+		const ast = parser.parse(content, {
+			sourceType: 'module',
+			plugins: ['jsx', 'typescript']
+		});
+
+
+		traverse(ast, {
+			// находим файлы с объявленным дефолтным экспортом
+			ExportDefaultDeclaration(path) {
+
+				if (Array.isArray(path.container)) {
+					path.container.forEach((node: any) => { // типизировать**
+						try {
+							// экспорты в name и список компонентов
+							if (node.type === 'ExportDefaultDeclaration' && node.declaration.type !== 'MemberExpression') { // 'MemberExpression' - export default slice.reducer;
+								let nameComponentFromList = '';
+								if (node.declaration.name) {
+									nameComponentFromList = node.declaration.name;
+								} else { // 'FunctionDeclaration'
+									nameComponentFromList = node.declaration.id.name;
+								}
+								componentsListExport.push(nameComponentFromList);
+							}
+						} catch (error: any) {
+							console.error(error.message);
+						}
+					});
+				}
+			},
+		});
+	});
+
+	// traverse(ast, {
+	// 	FunctionExpression(path) {
+	// 		console.log('functionExpression', path);
+	// 		// if (path.parentPath.isVariableDeclarator() && path.parentPath.node.id.type === 'Identifier' && path.parentPath.node.id.name) {
+	// 		// }
+	// 	},
+	// });
 
 	files.forEach(file => {
 		const content = fs.readFileSync(file, 'utf8');
@@ -50,50 +114,127 @@ function analyzeProject(rootPath: string) {
 			sourceType: 'module',
 			plugins: ['jsx', 'typescript']
 		});
-
+		let currentFunctionName: string = '';
 		traverse(ast, {
-			// находим файлы с объявленным дефолтным экспортом
-			ExportDefaultDeclaration(path) {
-				if (Array.isArray(path.container)) {
-					// инициализируем новый компонент
-					const newComponent: IComponent = {
-						name: '',
-						parent: '',
-						child: []
-					};
-					path.container.forEach((node: any) => { // типизировать**
-						try {
-							// импорты в них будут добавлены в child
-							if (node.type === 'ImportDeclaration') {
-								if (node.specifiers.length !== 0) { // то-же Node, ошибка при иморте стилей. добавить цикл для деструктуризации**
-									newComponent.child.push(node.specifiers[0].local.name);
+			JSXOpeningElement(path) {
+				// const newComponent: IComponent = {
+				// 	name: '',
+				// 	parent: '',
+				// 	child: []
+				// };
+				if (path.node.name.type === 'JSXIdentifier') {
+					const componentName = path.node.name.name;
+					if (componentsListExport.includes(componentName)) {
+						// newComponent.name = componentName;
+						// components.push(newComponent);
+						// console.log('componentName', componentName);
+					}
+				}
+			},
+			FunctionDeclaration(path) {
+				if (path.node.id) {
+					currentFunctionName = path.node.id.name;
+					path.traverse({
+						JSXOpeningElement(innerPath) {
+							if (innerPath.node.name.type === 'JSXIdentifier') {
+								const componentName = innerPath.node.name.name;
+								if (componentsListExport.includes(componentName)) {
+									const newComponent: IComponent = {
+										name: '',
+										parent: '',
+										child: []
+									};
+									newComponent.name = componentName;
+									newComponent.parent = currentFunctionName;
+									components.push(newComponent);
+									console.log('currentFunctionName', currentFunctionName);
 								}
 							}
-							// экспорты в name и список компонентов
-							if (node.type === 'ExportDefaultDeclaration' && node.declaration.type !== 'MemberExpression') { // 'MemberExpression' - export default slice.reducer;
-								let nameComponentFromList = '';
-								if (node.declaration.name) {
-									newComponent.name = node.declaration.name;
-									nameComponentFromList = node.declaration.name;
-								} else { // 'FunctionDeclaration'
-									newComponent.name = node.declaration.id.name;
-									nameComponentFromList = node.declaration.id.name;
-								}
-								components.push(newComponent);
-								componentsList.push(nameComponentFromList);
-							}
-							
-						} catch (error) {
-							console.error(error);
-						}
+						},
 					});
 				}
 			},
+			CallExpression(path) {
+				if (path.node.callee.type === 'Identifier') {
+					const args = path.node.arguments;
+					if (args.length > 0 && args[0].type === 'ArrayExpression') {
+						args[0].elements.forEach(element => {
+							if (element && element.type === 'ObjectExpression') {
+								element.properties.forEach(prop => {
+									if (prop.type === 'ObjectProperty' && prop.value.type === 'JSXElement' && prop.value.openingElement.name.type === 'JSXIdentifier') {
+										const componentName = prop.value.openingElement.name.name;
+										console.log('callExpresion', componentName);
+									}
+								});
+							}
+						});
+					}
+				}
+
+				// if (path.node.callee.name === 'createBrowserRouter') {
+				// 	const args = path.node.arguments;
+				// 	if (args.length > 0 && args[0].type === 'ArrayExpression') {
+				// 		args[0].elements.forEach(element => {
+				// 			if (element.type === 'ObjectExpression') {
+				// 				element.properties.forEach(prop => {
+				// 					if (prop.key.name === 'element' && prop.value.type === 'JSXElement') {
+				// 						const componentName = prop.value.openingElement.name.name;
+				// 						components.add(componentName);
+				// 					}
+				// 				});
+				// 			}
+				// 		});
+				// 	}
+				// }
+			},
+
+			// проверяем использование элементов
+			// JSXElement(path) {
+			// 	if (Array.isArray(path.container)) {
+			// 		// инициализируем новый компонент
+			// 		const newComponent: IComponent = {
+			// 			name: '',
+			// 			parent: '',
+			// 			child: []
+			// 		};
+			// 		path.container.forEach((node: any) => { // типизировать**
+			// 			try {
+			// 				// импорты в них будут добавлены в child
+			// 				if (node.type === 'ImportDeclaration') {
+			// 					if (node.specifiers.length !== 0) { // то-же Node, ошибка при иморте стилей. добавить цикл для деструктуризации**
+			// 						// newComponent.child.push(node.specifiers[0].local.name);
+			// 					}
+			// 				}
+			// 				// экспорты в name и список компонентов
+			// 				if (node.openingElement) {
+			// 					if (node.openingElement.name.type === 'JSXIdentifier') {
+			// 						if (componentsListExport.includes(node.openingElement.name.name)) {
+			// 							console.log('JSXIdentifier', node.openingElement.name.name);
+			// 							newComponent.name = node.openingElement.name.name;
+			// 							components.push(newComponent);
+			// 						}
+			// 					}
+			// 				}
+			// 				// if (node.type === 'ExportDefaultDeclaration' && node.declaration.type !== 'MemberExpression') { // 'MemberExpression' - export default slice.reducer;
+			// 				// 	if (node.declaration.name) {
+			// 				// 		newComponent.name = node.declaration.name;
+			// 				// 	} else { // 'FunctionDeclaration'
+			// 				// 		newComponent.name = node.declaration.id.name;
+			// 				// 	}
+			// 				// 	components.push(newComponent);
+			// 				// }
+			// 			} catch (error: any) {
+			// 				console.error(error.message);
+			// 			}
+			// 		});
+			// 	}
+			// },
 		});
 	});
+	console.log('componentsListExport', componentsListExport);
 	console.log('componentsList', componentsList);
 	console.log('components', components);
-	
+
 	const findChild = childSeparator(components, componentsList);
 	const result = setParents(findChild);
 
@@ -142,15 +283,15 @@ function setParents(components: IComponent[]) {
  * @returns строка в ввиде графа
  */
 function generateMermaidGraph(components: IComponent[]) {
-    let mermaidString = 'graph TD;\n';
+	let mermaidString = 'graph TD;\n';
 
-    components.forEach(obj => {
-        if (obj.parent) {
-            mermaidString += `    ${obj.parent} --> ${obj.name};\n`;
-        }
-    });
+	components.forEach(obj => {
+		if (obj.parent) {
+			mermaidString += `    ${obj.parent} --> ${obj.name};\n`;
+		}
+	});
 
-    return mermaidString;
+	return mermaidString;
 }
 
 /**
@@ -158,16 +299,16 @@ function generateMermaidGraph(components: IComponent[]) {
  * @param diagram строка в ввиде графа
  */
 function showMermaidDiagram(diagram: string) {
-    const panel = vscode.window.createWebviewPanel(
-        'reactGrafDep',
-        'ReactGrafDependencies',
-        vscode.ViewColumn.One,
-        {
-            enableScripts: true, // Enable scripts in the Webview
-        }
-    );
+	const panel = vscode.window.createWebviewPanel(
+		'reactGrafDep',
+		'ReactGrafDependencies',
+		vscode.ViewColumn.One,
+		{
+			enableScripts: true, // Enable scripts in the Webview
+		}
+	);
 
-    panel.webview.html = `
+	panel.webview.html = `
         <!DOCTYPE html>
         <html lang="en">
         <head>
