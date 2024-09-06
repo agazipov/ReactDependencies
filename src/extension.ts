@@ -140,8 +140,7 @@ function analyzeProject(rootPath: string) {
 			}
 		});
 
-		const node: IComponentAsNode = { name: file.name, child: childList };
-		componentsList[file.name] = node;
+		componentsList[file.name] = { name: file.name, child: childList };
 	});
 
 	const tree = generateTree(componentsList);
