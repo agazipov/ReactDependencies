@@ -37,7 +37,7 @@ export class Diagram extends Analyzer {
             }
         );
 
-        const scriptPathOnDisk = vscode.Uri.file(path.join(__dirname, 'control.js'));
+        const scriptPathOnDisk = vscode.Uri.file(path.join(__dirname, 'control/', 'control.js'));
         const scriptUri = panel.webview.asWebviewUri(scriptPathOnDisk);
 
         panel.webview.html = `

@@ -4,7 +4,7 @@ interface ZoomControllerOptions {
     zoomOutButtonId: string;
 }
 
-class Zoom {
+export class Zoom {
     private svgElement: SVGSVGElement | null;
     private zoomInButton: HTMLButtonElement | null;
     private zoomOutButton: HTMLButtonElement | null;
