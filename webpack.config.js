@@ -4,57 +4,46 @@ const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
 module.exports = (env, argv) => {
   const isProduction = argv.mode === 'production';
 
-  return {
-    entry: './src/html/control.ts', // Укажите основной файл, который будет импортировать другие модули
+  const commonConfig = {
+    module: {
+      rules: [
+        { test: /\.ts$/, loader: 'ts-loader' }
+      ]
+    },
+    resolve: {
+      extensions: ['.ts', '.js'],
+    },
+    mode: isProduction ? 'production' : 'development',
+  };
+
+  const controlConfig = {
+    ...commonConfig,
+    entry: './src/control/control.ts',
     output: {
       filename: 'control.js',
       path: path.resolve(__dirname, 'out/control/'),
     },
-    module: {
-      rules: [
-        {
-          test: /\.ts$/,
-          use: 'ts-loader',
-          exclude: /node_modules/,
-        },
-      ],
-    },
     resolve: {
-      extensions: ['.ts', '.js'],
+      ...commonConfig.resolve,
       fallback: {
         path: require.resolve("path-browserify")
       }
     },
+    plugins: [new NodePolyfillPlugin()],
     devtool: isProduction ? 'source-map' : 'inline-source-map',
-    mode: isProduction ? 'production' : 'development',
-    plugins: [
-      new NodePolyfillPlugin()
-    ]
   };
+
+  const extensionConfig = {
+    ...commonConfig,
+    target: 'node',
+    entry: './src/extension.ts',
+    output: {
+      filename: 'extension.js',
+      libraryTarget: 'commonjs2',
+      path: path.resolve(__dirname, 'out'),
+    },
+    externals: { vscode: 'vscode' },
+  };
+
+  return [controlConfig, extensionConfig];
 };
-
-// module.exports = (env, argv) => {
-//   const isProduction = argv.mode === 'production';
-
-//   return {
-//     entry: './src/extension.ts', // Укажите основной файл, который будет импортировать другие модули
-//     output: {
-//       filename: 'extension.js',
-//       path: path.resolve(__dirname, 'out/'),
-//     },
-//     module: {
-//       rules: [
-//         {
-//           test: /\.ts$/,
-//           use: 'ts-loader',
-//           exclude: /node_modules/,
-//         },
-//       ],
-//     },
-//     resolve: {
-//       extensions: ['.ts', '.js'],
-//     },
-//     devtool: isProduction ? 'source-map' : 'inline-source-map',
-//     mode: isProduction ? 'production' : 'development',
-//   };
-// };

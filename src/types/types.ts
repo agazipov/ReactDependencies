@@ -17,3 +17,9 @@ export interface INode {
 	name: string;
 	id: string;
 }
+
+export interface ZoomControllerOptions {
+    svgSelector: string;
+    zoomInButtonId: string;
+    zoomOutButtonId: string;
+}

@@ -1,8 +1,4 @@
-interface ZoomControllerOptions {
-    svgSelector: string;
-    zoomInButtonId: string;
-    zoomOutButtonId: string;
-}
+import { ZoomControllerOptions } from "../types/types";
 
 export class Zoom {
     private svgElement: SVGSVGElement | null;

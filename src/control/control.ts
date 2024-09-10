@@ -1,6 +1,6 @@
 import { Zoom } from "./zoom";
 
-export const main = window.addEventListener('load', () => {
+export const index = window.addEventListener('load', () => {
     mermaid.initialize({ startOnLoad: true });
     mermaid.contentLoaded();   
 

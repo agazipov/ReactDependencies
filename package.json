@@ -20,9 +20,9 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "rm -rf out && webpack --mode production && tsc -p ./",
-    "watch": "webpack --mode development & tsc -watch -p ./",
+    "vscode:prepublish": "rm -rf out && webpack --mode production",
+    "compile": "rm -rf out && webpack --mode development",
+    "watch": "npm run compile && -watch",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
     "test": "vscode-test"

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as parser from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
-import { IComponentAsNode, IComponentsList, IFileIsExport, IFileIsExportAsObj, INode } from "./types";
+import { IComponentAsNode, IComponentsList, IFileIsExport, IFileIsExportAsObj, INode } from "./types/types";
 
 export class Analyzer {
     private rootPath: string;
