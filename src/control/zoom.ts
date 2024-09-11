@@ -37,7 +37,7 @@ export class Zoom {
         }
     }
 
-    private zoomIn() {
+    private zoomIn() {        
         if (this.svgElement) {
             this.scale += 0.1;
             this.svgElement.style.width = (this.scale * 100) + '%';

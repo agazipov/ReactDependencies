@@ -1,3 +1,4 @@
+import { ScrollDrag } from "./scrollDrag";
 import { Zoom } from "./zoom";
 
 export const index = window.addEventListener('load', () => {
@@ -9,4 +10,6 @@ export const index = window.addEventListener('load', () => {
         zoomInButtonId: 'zoomInButton',
         zoomOutButtonId: 'zoomOutButton'
     });
+
+    const scrollDrag = new ScrollDrag();
 });

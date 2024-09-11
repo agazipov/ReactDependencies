@@ -47,6 +47,18 @@ export class Diagram extends Analyzer {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Dependency Graph</title>
+            <style>
+                .zoom-buttons {
+                    position: fixed;
+                    margin-bottom: 10px;
+                    bottom: 10px;
+                    right: 10px;
+                    z-index: 100;
+                }
+                .zoom-buttons button {
+                    margin-right: 5px;
+                }
+            </style>
             <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
             <script src="${scriptUri}"></script>
         </head>
