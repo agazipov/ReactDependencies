@@ -18,9 +18,9 @@ module.exports = (env, argv) => {
 
   const controlConfig = {
     ...commonConfig,
-    entry: './src/control/control.ts',
+    entry: './src/control/init.ts',
     output: {
-      filename: 'control.js',
+      filename: 'init.js',
       path: path.resolve(__dirname, 'out/control/'),
     },
     resolve: {

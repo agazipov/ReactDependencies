@@ -10,8 +10,8 @@ export function activate(context: vscode.ExtensionContext) {
 		const rootPath = vscode.workspace.rootPath;
 		if (rootPath) {
 			const srcPath = path.join(rootPath, 'src');
-			const diagram = new Diagram(srcPath);
-			diagram.showMermaidDiagram();
+			const diagram = new Diagram(srcPath, context);
+			diagram.webView();
 		}
 	});
 

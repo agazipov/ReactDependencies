@@ -15,11 +15,9 @@ export class Zoom {
         if (!this.svgElement) {
             console.error('SVG element not found');
         }
-
         if (!this.zoomInButton) {
             console.error('Zoom In button not found');
         }
-
         if (!this.zoomOutButton) {
             console.error('Zoom Out button not found');
         }

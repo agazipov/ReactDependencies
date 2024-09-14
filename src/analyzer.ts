@@ -15,12 +15,15 @@ export class Analyzer {
     private componentsList: IComponentsList = {}; // список компонентов как узлы дерева
     
     private characters: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-
-    tree: INode[] = [];
+    private tree: INode[] = [];
+    mermaidString: string = 'graph TD;\n';
+    result: string[] = [];
 
     constructor(rootPath: string) {
         this.rootPath = rootPath;
         this.getFiles(this.rootPath);
+        this.analyzeProject();
+        this.generateMermaidGraph();
     }
 
     private getFiles(dir: string) {
@@ -84,7 +87,7 @@ export class Analyzer {
     * @param rootPath корень проекта
     * @returns массив зависимостей IComponentAsNode
     */
-    analyzeProject() {
+    private analyzeProject() {
         this.pathsToFiles.forEach(filePath => this.findExports(filePath));
         Object.values(this.filesFromExport).forEach(file => this.findImportsAndJSX(file));
         this.generateTree();
@@ -166,5 +169,19 @@ export class Analyzer {
         });
 
         this.componentsList[file.name] = { name: file.name, child: childList };
+    }
+
+    
+    /**
+    * Генерирует строку зависимостей для библиотеки mermaid
+    * @returns строка в ввиде графа
+    */
+    private generateMermaidGraph() {
+        this.tree.forEach(node => {
+            if (node.parentRef) {
+                this.mermaidString += `    ${node.parentRef} ==> ${node.id}[${node.name}];\n`;
+            }
+        });
+        this.result.push(this.mermaidString);
     }
 }

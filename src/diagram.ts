@@ -1,33 +1,28 @@
+import * as fs from 'fs';
 import * as path from 'path';
-import { Analyzer } from "./analyzer";
 import * as vscode from 'vscode';
+import { Analyzer } from './analyzer';
 
-export class Diagram extends Analyzer {
-    private mermaidString: string = 'graph TD;\n';
+interface vscodeApi {
+    postMessage(message: any): void;
+}
 
-    constructor(rootPath: string) {
-        super(rootPath);
-        this.analyzeProject();
-        this.generateMermaidGraph();
-    }
+declare const vscodeApi: vscodeApi;
 
-    /**
-    * Генерирует строку зависимостей для библиотеки mermaid
-    * @returns строка в ввиде графа
-    */
-    private generateMermaidGraph() {
-        this.tree.forEach(node => {
-            if (node.parentRef) {
-                this.mermaidString += `    ${node.parentRef} ==> ${node.id}[${node.name}];\n`;
-            }
-        });
+export class Diagram {
+    private rootPath: string;
+    private context: vscode.ExtensionContext;
+
+    constructor(rootPath: string, context: vscode.ExtensionContext) {
+        this.rootPath = rootPath;
+        this.context = context;
     }
 
     /**
      * Представление webview для vcsoda. Рисует зависимости.
      * @param diagram строка в ввиде графа
      */
-    showMermaidDiagram() {
+    webView() {
         const panel = vscode.window.createWebviewPanel(
             'reactGrafDep',
             'ReactGrafDependencies',
@@ -37,7 +32,20 @@ export class Diagram extends Analyzer {
             }
         );
 
-        const scriptPathOnDisk = vscode.Uri.file(path.join(__dirname, 'control/', 'control.js'));
+        panel.webview.onDidReceiveMessage(
+            async (message) => {
+                switch (message.command) {
+                    case 'readDirectory':
+                        const files = await this.readDirectory();
+                        panel.webview.postMessage({ command: 'directoryContent', files });
+                        return;
+                }
+            },
+            undefined,
+            this.context.subscriptions
+        );
+
+        const scriptPathOnDisk = vscode.Uri.file(path.join(__dirname, 'control/', 'init.js'));
         const scriptUri = panel.webview.asWebviewUri(scriptPathOnDisk);
 
         panel.webview.html = `
@@ -58,20 +66,45 @@ export class Diagram extends Analyzer {
                 .zoom-buttons button {
                     margin-right: 5px;
                 }
+                .diagram {
+                    display: none;
+                }
             </style>
-            <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+            <script>
+                const vscode = acquireVsCodeApi();
+                window.onload = function() {
+                    vscode.postMessage({ command: 'get-data' });
+                    console.log('Ready to accept data.');
+                };
+            </script>
             <script src="${scriptUri}"></script>
         </head>
         <body>
-            <div class="zoom-buttons">
-                <button id="zoomInButton">Zoom In</button>
-                <button id="zoomOutButton">Zoom Out</button>
+            <div class="settings">
+                <button id="initButton">Init</button>
             </div>
-            <div class="mermaid">
-                ${this.mermaidString}
+            <div class="diagram">
+                <div class="zoom-buttons">
+                    <button id="zoomInButton">Zoom In</button>
+                    <button id="zoomOutButton">Zoom Out</button>
+                </div>
+                <div class="mermaid">
+                </div>
             </div>
         </body>
         </html>
     `;
+    }
+
+    async readDirectory(): Promise<string[]> {
+        return new Promise((resolve, reject) => {
+            try {
+                const analizeApp = new Analyzer(this.rootPath);
+                const mermaidString = analizeApp.result;
+                resolve(mermaidString);
+            } catch (error) {
+                reject(error);
+            }
+        });
     }
 }
