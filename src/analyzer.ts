@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as parser from '@babel/parser';
 import traverse, { NodePath } from '@babel/traverse';
-import { IComponentAsNode, IComponentsList, IFileIsExport, IFileIsExportAsObj, INode } from "./types/types";
+import { IComponentAsNode, IComponentsList, IFileIsExport, IFileAsReactComponent, INode } from "./types/types";
 
 export class Analyzer {
     private rootPath: string;
@@ -11,12 +11,12 @@ export class Analyzer {
     private contentCache: { [key: string]: string } = {};
 
     private pathsToFiles: string[] = [];
-    private filesFromExport: IFileIsExportAsObj = {}; // список файлов как компонентов
+    private filesAsReactComponent: IFileAsReactComponent = {}; // список файлов как компонентов
     private componentsList: IComponentsList = {}; // список компонентов как узлы дерева
-    
+
     private characters: string = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     private tree: INode[] = [];
-    mermaidString: string = 'graph TD;\n';
+    private mermaidString: string = 'graph TD;\n';
     result: string[] = [];
 
     constructor(rootPath: string) {
@@ -89,7 +89,7 @@ export class Analyzer {
     */
     private analyzeProject() {
         this.pathsToFiles.forEach(filePath => this.findExports(filePath));
-        Object.values(this.filesFromExport).forEach(file => this.findImportsAndJSX(file));
+        Object.values(this.filesAsReactComponent).forEach(file => this.findImportsAndJSX(file));
         this.generateTree();
     }
 
@@ -118,32 +118,28 @@ export class Analyzer {
         this.getAst(filePath);
 
         traverse(this.astCache[filePath], {
-            ExportDefaultDeclaration: (path) => {
-                const declaration = path.node.declaration;
-                let exportName;
-
-                if (declaration.type === 'Identifier') {
-                    exportName = declaration.name;
-                } else if (declaration.type === 'FunctionDeclaration') {
-                    exportName = declaration.id?.name;
-                    if (this.isReactComponent(path)) {
-                        if (exportName) {
-                            this.filesFromExport[exportName] = { path: filePath, name: exportName };
+            // Обработка объявлений переменных
+            VariableDeclarator: (path) => {
+                if (this.isReactComponent(path)  && path.node.init && path.node.init.type === 'ArrowFunctionExpression') {
+                    if (path.node.id.type === 'Identifier') {
+                        let fileName = path.node.id.name;
+                        if (fileName) {
+                            this.filesAsReactComponent[fileName] = { path: filePath, name: fileName };
                         }
                     }
                 }
-                //  else if (declaration.type === 'ClassDeclaration') {
-                // 	exportName = declaration.id?.name;
-                // 	if (isReactComponent(path)) {
-                // 		this.filesFromExport.push(exportName);
-                // 	}
-                // } else if (declaration.type === 'ArrowFunctionExpression' || declaration.type === 'FunctionExpression') {
-                // 	exportName = path.parentPath.parentPath?.node.id ? path.parentPath.parentPath.node.id.name : 'anonymous';
-                // 	if (isReactComponent(path)) {
-                // 		fileList.push(exportName);
-                // 	}
-                // }
-            }
+            },
+
+
+            // Обработка обычных функций
+            FunctionDeclaration: (path) => {                
+                if (this.isReactComponent(path)) {
+                    let fileName = path.node.id?.name;
+                    if (fileName) {
+                        this.filesAsReactComponent[fileName] = { path: filePath, name: fileName };
+                    }
+                }
+            },
         });
     }
 
@@ -156,7 +152,7 @@ export class Analyzer {
         traverse(this.astCache[file.path], {
             ImportDeclaration: (path) => {
                 for (let index = 0; index < path.node.specifiers.length; index++) {
-                    if (this.filesFromExport[path.node.specifiers[index].local.name]) { // проверка что импорт соответствует существующим компонентам
+                    if (this.filesAsReactComponent[path.node.specifiers[index].local.name]) { // проверка что импорт соответствует существующим компонентам
                         imports.push(path.node.specifiers[index].local.name);
                     }
                 }
@@ -171,7 +167,6 @@ export class Analyzer {
         this.componentsList[file.name] = { name: file.name, child: childList };
     }
 
-    
     /**
     * Генерирует строку зависимостей для библиотеки mermaid
     * @returns строка в ввиде графа

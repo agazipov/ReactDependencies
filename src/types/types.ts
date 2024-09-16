@@ -3,7 +3,7 @@ export interface IFileIsExport {
 	name: string;
 }
 
-export interface IFileIsExportAsObj  {[key: string]: IFileIsExport};
+export interface IFileAsReactComponent  {[key: string]: IFileIsExport};
 
 export interface IComponentAsNode {
 	name: string;

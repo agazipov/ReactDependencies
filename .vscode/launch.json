@@ -11,7 +11,7 @@
 			"request": "launch",
 			"args": [
 				"--extensionDevelopmentPath=${workspaceFolder}",
-				"${workspaceFolder}/../../../v0.2/ride_project" // указывает на проект для разработки
+				"${workspaceFolder}/../../../v0.3/test_react_project" // указывает на проект для разработки
 			],
 			"outFiles": [
 				"${workspaceFolder}/out/**/*.js"

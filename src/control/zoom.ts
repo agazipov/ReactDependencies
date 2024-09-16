@@ -38,14 +38,14 @@ export class Zoom {
     private zoomIn() {        
         if (this.svgElement) {
             this.scale += 0.1;
-            this.svgElement.style.width = (this.scale * 100) + '%';
+            this.svgElement.style.width = (this.scale * 100).toFixed(2) + '%';
         }
     }
 
     private zoomOut() {
         if (this.svgElement) {
             this.scale -= 0.1;
-            this.svgElement.style.width = (this.scale * 100) + '%';
+            this.svgElement.style.width = (this.scale * 100).toFixed(2) + '%';
         }
     }
 }
